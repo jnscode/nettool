@@ -28,7 +28,7 @@
    +-+-+-+-+-
 
    Sample:
-	param := ping.PingParam{"192.168.1.253", make([]byte, 32), false, 5, 1}
+	param := ping.Param{"192.168.1.253", make([]byte, 32), false, 5, 1}
 	r, e := ping.Ping(param)
 	if e != nil {
 		println("error", e.Error())
@@ -126,7 +126,7 @@ func makeRequest(id, seq int, data []byte) []byte {
 }
 
 // parse ping result
-func parsePingReply(p []byte, r *Result) (id, seq int) {
+func parseResult(p []byte, r *Result) (id, seq int) {
 
 	ipHeadLen := p[0] & 0xf * 4
 	if ipHeadLen > ipHeadSize {
@@ -199,7 +199,7 @@ func Ping(param Param) ([]Result, error) {
 		}
 
 		// pase result
-		rcvid, rcvseq := parsePingReply(rsp, &result)
+		rcvid, rcvseq := parseResult(rsp, &result)
 		if rcvid != icmpId || rcvseq != icmpSeq {
 			result.setError(false, errors.New("icmp id or seq not match"))
 		} else {
