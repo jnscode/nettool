@@ -112,8 +112,8 @@ func makeRequest(id, seq int, dataLen int) []byte {
 	req[6] = uint8(seq >> 8)   // sequence
 	req[7] = uint8(seq & 0xff) // sequence
 
-	for i:=8; i < size; i++ {
-		req[i] = (byte)('0') + ((byte)(i - 8) % 10)
+	for i := 8; i < size; i++ {
+		req[i] = (byte)('0') + ((byte)(i-8) % 10)
 	}
 
 	// place checksum back in header; using ^= avoids the
