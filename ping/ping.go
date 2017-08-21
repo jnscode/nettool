@@ -28,7 +28,7 @@
    +-+-+-+-+-
 
    Sample:
-	param := ping.Param{"192.168.1.253", make([]byte, 32), false, 5, 1}
+	param := ping.Param {"www.baidu.com", 32, true, 5}
 	r, e := ping.Ping(param)
 	if e != nil {
 		println("error", e.Error())
@@ -59,10 +59,9 @@ const (
 // struct of ping param
 type Param struct {
 	Addr    string
-	Data    []byte
+	DataLen int
 	Segment bool
 	Timeout int
-	Count   int
 }
 
 // struct of ping result
@@ -98,9 +97,10 @@ func checkSum(p []byte) uint16 {
 }
 
 // make ping request packet
-func makeRequest(id, seq int, data []byte) []byte {
-	datalen := len(data)
-	size := icmpHeadSize + datalen
+func makeRequest(id, seq int, dataLen int) []byte {
+
+	dataLen &= 0xff
+	size := icmpHeadSize + dataLen
 	req := make([]byte, size)
 
 	req[0] = icmpReqCode       // type
@@ -112,8 +112,8 @@ func makeRequest(id, seq int, data []byte) []byte {
 	req[6] = uint8(seq >> 8)   // sequence
 	req[7] = uint8(seq & 0xff) // sequence
 
-	if datalen > 0 {
-		copy(req[8:], data[:datalen])
+	for i:=8; i < size; i++ {
+		req[i] = (byte)('0') + ((byte)(i - 8) % 10)
 	}
 
 	// place checksum back in header; using ^= avoids the
@@ -149,66 +149,61 @@ func parseResult(p []byte, r *Result) (id, seq int) {
 }
 
 // ping addr count times
-func Ping(param Param) ([]Result, error) {
+func Ping(param Param) (Result, error) {
 
-	results := make([]Result, 0)
+	var result Result
 
 	// *IPAddr
 	raddr, e := net.ResolveIPAddr("ip4", param.Addr)
 	if e != nil {
-		return results, e
+		return result, e
 	}
 
 	// *IPConn
 	conn, e := net.DialIP("ip4:icmp", nil, raddr)
 	if e != nil {
-		return results, e
+		return result, e
 	}
 
 	defer conn.Close()
 
 	icmpId := os.Getpid() & 0xffff
+	icmpSeq := 1
 
-	for i := 0; i < param.Count; i++ {
+	req := makeRequest(icmpId, icmpSeq, param.DataLen)
 
-		var result Result
-
-		icmpSeq := i + 1
-		req := makeRequest(icmpId, icmpSeq, param.Data)
-
-		// send icmp request
-		n, err := conn.Write(req)
-		if err != nil || n != len(req) {
-			result.setError(false, err)
-			results = append(results, result)
-			break
-		}
-
-		// set timeout
-		conn.SetDeadline(time.Now().Add(5 * time.Second))
-
-		// make response data buffer
-		rsp := make([]byte, ipHeadSize+icmpHeadSize+len(param.Data))
-
-		// read icmp response
-		_, e := conn.Read(rsp)
-		if e != nil {
-			result.setError(false, e)
-			results = append(results, result)
-			break
-		}
-
-		// pase result
-		rcvid, rcvseq := parseResult(rsp, &result)
-		if rcvid != icmpId || rcvseq != icmpSeq {
-			result.setError(false, errors.New("icmp id or seq not match"))
-		} else {
-			result.Time = 5
-			result.Succ = true
-		}
-
-		results = append(results, result)
+	// send icmp request
+	n, e := conn.Write(req)
+	if e != nil || n != len(req) {
+		result.setError(false, e)
+		return result, nil
 	}
 
-	return results, nil
+	// set timeout
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+
+	// make response data buffer
+	rsp := make([]byte, ipHeadSize+icmpHeadSize+param.DataLen)
+
+	tmStart := time.Now()
+
+	// read icmp response
+	_, e = conn.Read(rsp)
+	if e != nil {
+		result.setError(false, e)
+		return result, nil
+	}
+
+	tmCost := time.Since(tmStart)
+
+	// pase result
+	rcvid, rcvseq := parseResult(rsp, &result)
+	if rcvid != icmpId || rcvseq != icmpSeq {
+		result.setError(false, errors.New("icmp id or seq not match"))
+	} else {
+		result.Time = (int)(tmCost / 1000 / 1000)
+		result.Succ = true
+	}
+
+	return result, nil
 }
