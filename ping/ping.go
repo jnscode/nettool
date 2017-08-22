@@ -180,7 +180,7 @@ func Ping(param Param) (Result, error) {
 	}
 
 	// set timeout
-	conn.SetDeadline(time.Now().Add(5 * time.Second))
+	conn.SetDeadline(time.Now().Add((time.Duration)(param.Timeout) * time.Second))
 
 	// make response data buffer
 	rsp := make([]byte, ipHeadSize+icmpHeadSize+param.DataLen)
