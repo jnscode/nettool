@@ -2,53 +2,58 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/jnscode/nettool/ping"
 )
 
 func testPing() {
-	param := ping.Param{"www.baidu.com", 32, true, 5}
+	param := ping.Param{Addr: "www.baidu.com", DataLen: 32, Segment: true, Timeout: 5}
 	r, e := ping.Ping(param)
 	if e != nil {
-		fmt.Printf("ping %s ret error\n", param.Addr, e.Error())
+		fmt.Printf("ping %s ret error %s\n", param.Addr, e.Error())
 	} else {
-		fmt.Printf("ping %s ret %v\n", param.Addr, r)
+		fmt.Printf("ping %s cost %d ms, ttl %d\n", param.Addr, r.Time, r.Ttl)
 	}
 }
 
 func testPing2() {
 	tm := time.Now()
 
+	count := 0
 	ch := make(chan ping.Result)
-	for i := 1; i < 255; i++ {
-		ip := "192.168.1." + strconv.Itoa(i)
-		param := ping.Param{ip, 32, true, 5}
-		go func() {
-			r, e := ping.Ping(param)
-			if e != nil {
-				fmt.Printf("ping %s ret error\n", param.Addr, e.Error())
-			} else {
-				fmt.Printf("ping %s ret %v\n", param.Addr, r)
-			}
+	for i := 100; i < 101; i++ {
+		for j := 100; j < 200; j++ {
+			for k := 100; k < 200; k++ {
+				count++
+				ip := fmt.Sprintf("60.%d.%d.%d", i, j, k)
+				param := ping.Param{Addr: ip, DataLen: 32, Segment: true, Timeout: 1}
+				go func() {
+					r, _ := ping.Ping(param)
+					/*if e != nil {
+						fmt.Printf("ping %s ret error %s\n", param.Addr, e.Error())
+					} else {
+						fmt.Printf("ping %s cost %d ms, ttl %d\n", param.Addr, r.Time, r.Ttl)
+					}*/
 
-			ch <-r
-		}()
+					ch <- r
+				}()
+			}
+		}
 	}
 
-	for i := 1; i < 255; i++ {
-		r := <-ch
-		fmt.Printf("ping ret %v\n", r)
+	for i := 1; i < count; i++ {
+		<-ch
+		//fmt.Printf("ping ret %v\n", r)
 	}
 
 	cost := time.Since(tm) / 1000 / 1000
 
-	fmt.Printf("test completed, cost %d ms", cost)
+	fmt.Printf("test completed, ping %d ip cost %d ms\n", count, cost)
 }
 
 func main() {
-	testPing()
+	//testPing()
 	testPing2()
 
 	println("exit main")
