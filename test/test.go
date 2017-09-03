@@ -51,6 +51,7 @@ func testPingPerform() {
 }
 
 func main() {
+	testPing()
 	testPingPerform()
 
 	println("exit main")
