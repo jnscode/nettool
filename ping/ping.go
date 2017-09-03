@@ -27,8 +27,11 @@
    |     Data ...
    +-+-+-+-+-
 
+   Brief:
+    A simple, fast tool for the ping
+
    Sample:
-	param := ping.Param {"www.baidu.com", 32, true, 5}
+	param := ping.Param {Addr: "www.baidu.com", DataLen: 32, Segment: true, Timeout: 5}
 	r, e := ping.Ping(param)
 	if e != nil {
 		println("error", e.Error())
@@ -56,7 +59,7 @@ const (
 	ipTtlPos = 8
 )
 
-// struct of ping param
+// Param is the structure of ping parameter
 type Param struct {
 	Addr    string
 	DataLen int
@@ -64,7 +67,7 @@ type Param struct {
 	Timeout int
 }
 
-// struct of ping result
+// Result is the structure of ping results
 type Result struct {
 	Succ  bool
 	Ttl   int
@@ -148,7 +151,7 @@ func parseResult(p []byte, r *Result) (id, seq int) {
 	return
 }
 
-// ping addr count times
+// Ping is the main function of ping operation
 func Ping(param Param) (Result, error) {
 
 	var result Result
